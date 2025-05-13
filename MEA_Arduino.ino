@@ -6,14 +6,14 @@
 LiquidCrystal_I2C lcd(0x27,16,2); //adresa LCD la 0x27 pt 16 char si 2 lini
 
 #define MAX_OPEN_DURATION 5000
-#define UPDATE_INTERVAL 20
+#define UPDATE_INTERVAL 100
 
 Servo entrance_servo, exit_servo;
 const int entrance_servo_pin = 10;
 const int exit_servo_pin = 11;
 
-const int entrance_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
-const int exit_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
+int entrance_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
+int exit_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
 
 
 const int entrance_sensor = 2;
@@ -58,8 +58,11 @@ void enters(){
   entrance_servo.write(90);
   interrupts();
   
-  //delay(2000);
 
+  //resetez timer-ul
+  entrance_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
+  //delay(2000);
+  remaining_seats--;
   //Serial.println("returning entrance servo");
   //noInterrupts();
   //entrance_servo.write(0);
@@ -74,9 +77,9 @@ void exits(){
     exit_servo.write(90);
     interrupts();
 
-    
+    exit_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
     //delay(2000);
-    
+    remaining_seats++;
     //Serial.println("returning exit servo");
     
     //noInterrupts();
@@ -87,6 +90,7 @@ void exits(){
 
 void loop() {
   // put your main code here, to run repeatedly:
+  /*
   delay(2000);
   lcd.setCursor(5,0);
   lcd.print("PARCARE");
@@ -95,4 +99,22 @@ void loop() {
   Serial.println("running...");
   exit_servo.write(0);
   entrance_servo.write(0);
+  */
+  lcd.clear();
+  lcd.print("Locuri ramase:");
+  lcd.setCursor(0, 1);
+  lcd.print(remaining_seats);
+  if(entrance_timer == 0){
+    entrance_servo.write(0);
+  }else if(entrance_timer > 0){
+    entrance_timer--;
+  }
+
+  
+  if(exit_timer == 0){
+    exit_servo.write(0);
+  }else if(exit_timer > 0){
+    exit_timer--;
+  }
+  delay(UPDATE_INTERVAL);
 }
