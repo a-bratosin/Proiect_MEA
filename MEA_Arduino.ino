@@ -12,8 +12,8 @@ Servo entrance_servo, exit_servo;
 const int entrance_servo_pin = 10;
 const int exit_servo_pin = 11;
 
-int entrance_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
-int exit_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
+int entrance_timer = 0;
+int exit_timer = 0;
 
 
 const int entrance_sensor = 2;
@@ -25,6 +25,8 @@ const int led_exit = 13;
 int remaining_seats = MAX_SEATS; //nr total de locuri
 int val_entrance = 0;
 int val_exit = 0;
+
+int changed_val = 0;
 
 void setup()
 {
@@ -51,44 +53,60 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(entrance_sensor), enters, FALLING);
   attachInterrupt(digitalPinToInterrupt(exit_sensor), exits, FALLING);
 
+  lcd.clear();
+  lcd.print("Locuri ramase:");
+  lcd.setCursor(0, 1);
+  lcd.print(remaining_seats);
 }
 void enters(){
 
-  noInterrupts();
-  entrance_servo.write(90);
-  interrupts();
-  
+  // acționează motorul și decrementează/incrementează doar dacă deja este coborâtă bariera
+  if(entrance_timer == 0){
+    noInterrupts();
+    entrance_servo.write(90);
+    interrupts();
 
-  //resetez timer-ul
-  entrance_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
-  //delay(2000);
-  remaining_seats--;
+    //resetez timer-ul
+  
+    remaining_seats--;
+    changed_val = 1;
+  }
   //Serial.println("returning entrance servo");
   //noInterrupts();
   //entrance_servo.write(0);
   //interrupts();
-  
+  entrance_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
   
 }
 
 void exits(){
-
+  
+  if(entrance_timer == 0){
     noInterrupts();
     exit_servo.write(90);
     interrupts();
 
-    exit_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
     //delay(2000);
     remaining_seats++;
     //Serial.println("returning exit servo");
-    
-    //noInterrupts();
-    //exit_servo.write(0);
-    //interrupts();
+    changed_val = 1;
+  }
+  exit_timer = MAX_OPEN_DURATION/UPDATE_INTERVAL;
 
 }
 
+void clear_bottom_row(){
+  lcd.setCursor(0,1);
+  for(int i=0; i<16; i++){
+    lcd.print(' ');
+  }
+}
 void loop() {
+
+  Serial.print("entrance timer: ");
+  Serial.print(entrance_timer);
+  Serial.print(" | exit timer: ");
+  Serial.println(exit_timer);
   // put your main code here, to run repeatedly:
   /*
   delay(2000);
@@ -100,20 +118,30 @@ void loop() {
   exit_servo.write(0);
   entrance_servo.write(0);
   */
-  lcd.clear();
-  lcd.print("Locuri ramase:");
-  lcd.setCursor(0, 1);
-  lcd.print(remaining_seats);
+  if(changed_val){    
+    clear_bottom_row();
+    lcd.setCursor(0, 1);
+    if(remaining_seats == 0){
+      lcd.print("Parcare plina!");
+    }else if(remaining_seats == MAX_SEATS){
+      lcd.print("Parcare goala!");
+    }else
+      lcd.print(remaining_seats);
+    
+    changed_val = 0;
+  }
+
+  // cei doi senzori au semnalele invers: când detectează un obiect, au 0, și în rest 1
   if(entrance_timer == 0){
     entrance_servo.write(0);
-  }else if(entrance_timer > 0){
+  }else if((entrance_timer > 0) && digitalRead(entrance_sensor) ){
     entrance_timer--;
   }
 
   
   if(exit_timer == 0){
     exit_servo.write(0);
-  }else if(exit_timer > 0){
+  }else if((exit_timer > 0)  && digitalRead(exit_sensor) ){
     exit_timer--;
   }
   delay(UPDATE_INTERVAL);
